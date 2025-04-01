@@ -26,10 +26,12 @@ const ProductCardDos = ({ product }) => {
   
   // Formatear precio con separador de miles
   const formatPrice = (price) => {
-    if (typeof price !== 'number') {
+    // Verificar si price es un número válido
+    if (price === undefined || price === null || isNaN(price)) {
       return '0.00';
     }
-    return price.toLocaleString('es-ES', {
+    
+    return Number(price).toLocaleString('es-ES', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });

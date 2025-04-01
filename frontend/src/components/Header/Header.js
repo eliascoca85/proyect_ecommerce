@@ -71,7 +71,7 @@ const Header = () => {
         
         <div className="flex-1 flex justify-center md:justify-center">
           <Link href="/" className="text-2xl font-bold text-white">
-            <span className="font-designer text-3xl">TECH<span className="text-red-500">ZONE</span></span>
+            <span className="font-designer text-3xl">Los<span className="text-red-500">miserables</span></span>
           </Link>
         </div>
         

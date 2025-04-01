@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaShoppingCart, FaTimes, FaTrash, FaPlus, FaMinus } from 'react-icons/fa';
 import { useCarrito } from '../../actions/carritoActions';
 import Link from 'next/link';
@@ -9,6 +9,7 @@ import Link from 'next/link';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const CarritoModal = ({ isOpen, onClose }) => {
+  const [isAnimating, setIsAnimating] = useState(false);
   const { 
     items, 
     loading, 
@@ -20,6 +21,24 @@ const CarritoModal = ({ isOpen, onClose }) => {
     vaciarCarrito 
   } = useCarrito();
 
+  // Controlar la animación
+  useEffect(() => {
+    if (isOpen) {
+      setIsAnimating(true);
+      // Emitir evento para indicar que el modal está abierto
+      window.dispatchEvent(new Event('carrito-modal-open'));
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsAnimating(false);
+    // Emitir evento para indicar que el modal se está cerrando
+    window.dispatchEvent(new Event('carrito-modal-close'));
+    setTimeout(() => {
+      onClose();
+    }, 300); // tiempo de la animación para cerrarse
+  };
+
   // Formatear precio con separador de miles
   const formatPrice = (price) => {
     if (price === undefined || price === null) return '0.00';
@@ -30,24 +49,23 @@ const CarritoModal = ({ isOpen, onClose }) => {
   };
 
   // Manejar cambio de cantidad
-  // Manejar cambio de cantidad (versión mejorada)
-const handleCantidadChange = async (detalleId, cantidad, currentCantidad) => {
-  const nuevaCantidad = currentCantidad + cantidad;
-  if (nuevaCantidad < 1) return;
-  
-  try {
-    const resultado = await actualizarCantidad(detalleId, nuevaCantidad);
+  const handleCantidadChange = async (detalleId, cantidad, currentCantidad) => {
+    const nuevaCantidad = currentCantidad + cantidad;
+    if (nuevaCantidad < 1) return;
     
-    // Si la actualización falló por stock insuficiente
-    if (resultado && resultado.success === false && resultado.error === 'Stock insuficiente') {
-      // El error ya se muestra a través del contexto mediante setError
-      console.log(`Stock insuficiente. Disponible: ${resultado.stockDisponible}`);
+    try {
+      const resultado = await actualizarCantidad(detalleId, nuevaCantidad);
+      
+      // Si la actualización falló por stock insuficiente
+      if (resultado && resultado.success === false && resultado.error === 'Stock insuficiente') {
+        // El error ya se muestra a través del contexto mediante setError
+        console.log(`Stock insuficiente. Disponible: ${resultado.stockDisponible}`);
+      }
+    } catch (error) {
+      // El error ya se maneja en el contexto
+      console.error('Error al cambiar cantidad:', error);
     }
-  } catch (error) {
-    // El error ya se maneja en el contexto
-    console.error('Error al cambiar cantidad:', error);
-  }
-};
+  };
 
   // Manejar eliminación de producto
   const handleEliminarProducto = async (detalleId) => {
@@ -70,15 +88,19 @@ const handleCantidadChange = async (detalleId, cantidad, currentCantidad) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Overlay */}
+    <div className="fixed inset-0 z-[9999] overflow-hidden">
+      {/* Overlay con animación */}
       <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
+        className={`absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${isAnimating ? 'opacity-100' : 'opacity-0'}`}
+        onClick={handleClose}
       ></div>
       
-      {/* Modal */}
-      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-gray-900 shadow-xl transform transition-transform duration-300">
+      {/* Modal con animación */}
+      <div 
+        className={`absolute right-0 top-0 h-full w-full max-w-md bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out ${
+          isAnimating ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-800">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -91,7 +113,7 @@ const handleCantidadChange = async (detalleId, cantidad, currentCantidad) => {
             )}
           </h2>
           <button 
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-white transition-colors"
           >
             <FaTimes size={24} />
@@ -99,7 +121,7 @@ const handleCantidadChange = async (detalleId, cantidad, currentCantidad) => {
         </div>
         
         {/* Contenido */}
-        <div className="overflow-y-auto h-[calc(100%-8rem)]">
+        <div className="overflow-y-auto h-[calc(100%-12rem)] md:h-[calc(100%-8rem)]">
           {loading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"></div>
@@ -124,7 +146,7 @@ const handleCantidadChange = async (detalleId, cantidad, currentCantidad) => {
               <Link 
                 href="/catalogo"
                 className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                onClick={onClose}
+                onClick={handleClose}
               >
                 Explorar productos
               </Link>
@@ -192,9 +214,9 @@ const handleCantidadChange = async (detalleId, cantidad, currentCantidad) => {
           )}
         </div>
         
-        {/* Footer */}
+        {/* Footer - Ajustado para evitar que se superpongan los botones */}
         {items.length > 0 && (
-          <div className="p-4 border-t border-gray-800">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t z-[1000] border-gray-800 bg-gray-900">
             <div className="flex justify-between items-center mb-4">
               <span className="text-gray-400">Subtotal ({cantidadTotal} productos):</span>
               <span className="text-xl font-bold text-white">${formatPrice(total)}</span>
@@ -203,14 +225,14 @@ const handleCantidadChange = async (detalleId, cantidad, currentCantidad) => {
             <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={handleVaciarCarrito}
-                className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
+                className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors text-sm md:text-base"
               >
                 Vaciar carrito
               </button>
               <Link 
                 href="/checkout"
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-center"
-                onClick={onClose}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-center text-sm md:text-base"
+                onClick={handleClose}
               >
                 Proceder al pago
               </Link>

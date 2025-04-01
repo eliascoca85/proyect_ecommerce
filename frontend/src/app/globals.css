@@ -38,3 +38,7 @@ p{
 #hsimg{
   filter: drop-shadow(0 10px 100px #45ffff);
 }
+
+#tawkchat-container {
+  z-index: 10 !important;
+}
