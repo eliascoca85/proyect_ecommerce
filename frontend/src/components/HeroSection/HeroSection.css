@@ -1,0 +1,49 @@
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Estilos existentes */
+
+/* Ajustes responsivos adicionales */
+@media (max-width: 768px) {
+  .font-game {
+    font-size: 0.9em;
+    line-height: 1.3;
+  }
+}
+
+@media (max-width: 480px) {
+  .font-game {
+    font-size: 0.8em;
+    line-height: 1.2;
+  }
+}
+
+/* Mejoras para el modelo 3D */
+.model-canvas {
+  position: relative;
+  z-index: 10;
+}
+
+@media (min-width: 768px) {
+  .model-canvas {
+    overflow: visible !important;
+  }
+}
+
+/* Mejoras para layout móvil */
+@media (max-width: 767px) {
+  section {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .model-canvas {
+    margin-bottom: -20px; /* Ajusta espacio entre modelo y texto */
+  }
+}
+
+

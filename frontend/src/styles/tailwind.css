@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@font-face {
+  font-family: 'ROBOT';
+  src: url('../assets/fonts/robot.ttf');
+  
+}
+
+@font-face {
+  font-family: 'GAME';
+  src: url('../assets/fonts/GAME.ttf');
+  
+}
+
+@font-face {
+  font-family: 'CHOPSIC';
+  src: url('../assets/fonts/Chopsic.otf');
+  
+}
+@font-face {
+  font-family: 'DESIGNER';
+  src: url('../assets/fonts/Designer.otf');
+  
+}
+
+@font-face {
+  font-family: 'KA1';
+  src: url('../assets/fonts/ka1.ttf');
+  
+}
+@font-face {
+  font-family: 'CONTM';
+  src: url('../assets/fonts/contm.ttf');
+  
+}
+
+@keyframes slide-in {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+
+.animate-slide-in {
+  animation: slide-in 0.8s ease-out forwards;
+}
+
+.animate-slide-one {
+  animation: slide-in 0.3s ease-out forwards;
+}
+.animate-slide-two {
+  animation: slide-in 0.5s ease-out forwards;
+}
+.animate-slide-three {
+  animation: slide-in 0.7s ease-out forwards;
+}
+.animate-slide-four {
+  animation: slide-in 0.9s ease-out forwards;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-bounce {
+  animation: bounce 2s infinite;
+}
