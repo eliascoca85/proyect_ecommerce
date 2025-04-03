@@ -1,8 +1,8 @@
 const express = require('express');
 const { 
   crearCarrito,
-  obtenerCarrito,
-  getCarritoById
+  getCarritoById,
+  vaciarCarrito
 } = require('../controllers/carritoController');
 
 const router = express.Router();
@@ -12,5 +12,8 @@ router.post('/', crearCarrito);
 
 // Obtener un carrito por ID
 router.get('/:id', getCarritoById);
+
+// Vaciar un carrito por ID
+router.delete('/:id/vaciar', vaciarCarrito);
 
 module.exports = router; 

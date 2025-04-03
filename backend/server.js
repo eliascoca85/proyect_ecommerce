@@ -19,6 +19,7 @@ const productoRoutes = require('./routes/productoRoutes');
 const detalleCarritoRoutes = require('./routes/detalleCarritoRoutes'); // Verifica que esta línea exista
 const carritoRoutes = require('./routes/carritoRoutes');
 const authRoutes = require('./routes/authRoutes');
+const stripeRoutes = require('./routes/stripeRoutes');
 
 
 const ventaTableRoutes = require('./routes/ventaTableRoutes');
@@ -36,6 +37,7 @@ app.use('/api/productos', productoRoutes);
 app.use('/api/detalles', detalleCarritoRoutes); // ¡ASEGÚRATE QUE ESTA LÍNEA EXISTA!
 app.use('/api/carritos', carritoRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/stripe', stripeRoutes);
 
 // ...existing code...
 

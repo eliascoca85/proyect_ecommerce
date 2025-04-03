@@ -1,4 +1,5 @@
 const Carrito = require('../models/carritoModel');
+const DetalleCarrito = require('../models/detalleCarritoModel');
 
 // Crear un nuevo carrito
 const crearCarrito = async (req, res) => {
@@ -33,7 +34,43 @@ const getCarritoById = async (req, res) => {
   }
 };
 
+// Vaciar un carrito por ID
+const vaciarCarrito = async (req, res) => {
+  try {
+    const carritoId = parseInt(req.params.id);
+    
+    if (!carritoId || isNaN(carritoId)) {
+      return res.status(400).json({ error: 'ID de carrito inválido' });
+    }
+    
+    console.log(`Vaciando carrito ID: ${carritoId}`);
+    
+    // Verificar que el carrito existe
+    const carrito = await Carrito.getById(carritoId);
+    
+    if (!carrito) {
+      return res.status(404).json({ error: 'Carrito no encontrado' });
+    }
+    
+    // Eliminar todos los detalles del carrito
+    await DetalleCarrito.clearCarrito(carritoId);
+    
+    // Actualizar el carrito para indicar que ha sido vaciado
+    await Carrito.updateStatus(carritoId, 'vaciado');
+    
+    res.json({ 
+      success: true, 
+      mensaje: 'Carrito vaciado correctamente',
+      id_carrito: carritoId
+    });
+  } catch (error) {
+    console.error('Error al vaciar carrito:', error);
+    res.status(500).json({ error: 'Error al vaciar el carrito' });
+  }
+};
+
 module.exports = {
   crearCarrito,
-  getCarritoById
+  getCarritoById,
+  vaciarCarrito
 }; 

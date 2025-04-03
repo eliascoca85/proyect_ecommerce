@@ -33,7 +33,23 @@ const getById = async (id) => {
   }
 };
 
+// Actualizar el estado de un carrito
+const updateStatus = async (id, estado) => {
+  try {
+    const result = await pool.query(
+      'UPDATE carrito SET estado = $1, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id_carrito = $2 RETURNING *',
+      [estado, id]
+    );
+    
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error al actualizar estado del carrito:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   create,
-  getById
+  getById,
+  updateStatus
 }; 
