@@ -116,10 +116,45 @@ const updateEstado = async (id, estado) => {
   }
 };
 
+// Obtener últimas ventas
+const getUltimasVentas = async (limit = 5) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        v.id_venta,
+        COALESCE(p.nombre_completo, 'Cliente no registrado') as cliente,
+        v.total,
+        v.fecha_creacion,
+        v.estado,
+        (SELECT COUNT(*) FROM detalle_venta dv WHERE dv.id_venta = v.id_venta) as num_productos
+      FROM venta v
+      LEFT JOIN persona p ON v.id_persona = p.id_persona
+      ORDER BY v.fecha_creacion DESC
+      LIMIT $1
+    `, [limit]);
+
+    // Dar formato a los resultados
+    const ventas = result.rows.map(venta => ({
+      id: venta.id_venta,
+      cliente: venta.cliente,
+      productos: parseInt(venta.num_productos) || 0,
+      total: parseFloat(venta.total),
+      fecha: venta.fecha_creacion,
+      estado: venta.estado
+    }));
+
+    return ventas;
+  } catch (error) {
+    console.error('Error al obtener últimas ventas:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   getAll,
   getById,
   getDetallesByVentaId,
   create,
-  updateEstado
+  updateEstado,
+  getUltimasVentas
 };

@@ -1,39 +1,49 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaHome, FaBox, FaUsers, FaShoppingCart, FaTags, FaChartLine, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import ProductoTable from './components/producto/productoTable';
 import MarcaTable from './components/marca/marcaTable';
 import ClienteTable from './components/cliente/ClienteTable';
 import VentaTable from './components/venta/VentaTable';
+import { productoAPI, ventaAPI, dashboardAPI } from '@/api/client';
 
 const Dashboard = () => {
   // Estado para controlar la sección activa
   const [activeSection, setActiveSection] = useState('overview');
+  // Añadir estado para productos recientes
+  const [productosRecientes, setProductosRecientes] = useState([]);
+  // Añadir estado para ventas recientes
+  const [ventasRecientes, setVentasRecientes] = useState([]);
+  const [dashboardData, setDashboardData] = useState({
+    totalVentas: 0,
+    totalPedidos: 0,
+    nuevosClientes: 0,
+    productosAgotados: 0
+  });
 
-  // Datos de ejemplo para el dashboard
-  const dashboardData = {
-    totalVentas: 12850.75,
-    totalPedidos: 156,
-    nuevosClientes: 28,
-    productosAgotados: 5
-  };
+  // Añadir useEffect para cargar los productos recientes
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        // Cargar productos recientes
+        const productos = await productoAPI.getUltimos(5);
+        setProductosRecientes(productos);
 
-  // Datos de ejemplo para productos recientes
-  const productosRecientes = [
-    { id: 1, nombre: "RTX 4070 Ti", categoria: "GPU", precio: 899.99, stock: 12 },
-    { id: 2, nombre: "Intel i9-13900K", categoria: "CPU", precio: 599.99, stock: 8 },
-    { id: 3, nombre: "ASUS ROG Strix Z790", categoria: "Motherboard", precio: 429.99, stock: 15 },
-    { id: 4, nombre: "Corsair 32GB DDR5", categoria: "RAM", precio: 189.99, stock: 20 },
-  ];
+        // Cargar ventas recientes
+        const ventas = await ventaAPI.getUltimas(5);
+        setVentasRecientes(ventas);
 
-  // Datos de ejemplo para ventas recientes
-  const ventasRecientes = [
-    { id: 101, cliente: "Carlos Mendoza", productos: 3, total: 1255.99, fecha: "2023-11-15", estado: "Completado" },
-    { id: 102, cliente: "Ana García", productos: 1, total: 899.99, fecha: "2023-11-14", estado: "Enviado" },
-    { id: 103, cliente: "Miguel Torres", productos: 5, total: 2450.50, fecha: "2023-11-13", estado: "Procesando" },
-    { id: 104, cliente: "Laura Sánchez", productos: 2, total: 599.99, fecha: "2023-11-12", estado: "Completado" },
-  ];
+        // Cargar estadísticas del dashboard
+        const estadisticas = await dashboardAPI.getEstadisticas();
+        setDashboardData(estadisticas);
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+      }
+    };
+
+    cargarDatos();
+  }, []);
 
   // Renderizar el contenido según la sección activa
   const renderContent = () => {
@@ -87,7 +97,7 @@ const Dashboard = () => {
                   <thead>
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Producto</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Categoría</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Marca</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Precio</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Stock</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Acciones</th>
@@ -95,17 +105,19 @@ const Dashboard = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-700">
                     {productosRecientes.map((producto) => (
-                      <tr key={producto.id} className="hover:bg-gray-800">
+                      <tr key={producto.id_producto} className="hover:bg-gray-800">
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">{producto.nombre}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{producto.categoria}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">${producto.precio}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{producto.nombre_marca || 'Sin marca'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
+                          ${producto.precio_oferta || producto.precio}
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            producto.stock > 10 ? 'bg-green-900 text-green-300' : 
-                            producto.stock > 5 ? 'bg-yellow-900 text-yellow-300' : 
+                            producto.cantidad > 10 ? 'bg-green-900 text-green-300' : 
+                            producto.cantidad > 5 ? 'bg-yellow-900 text-yellow-300' : 
                             'bg-red-900 text-red-300'
                           }`}>
-                            {producto.stock} unidades
+                            {producto.cantidad} unidades
                           </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
@@ -123,7 +135,12 @@ const Dashboard = () => {
             <div className="bg-gray-900 rounded-xl p-6 shadow-lg">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-white">Ventas Recientes</h3>
-                <button className="text-red-500 hover:text-red-400 text-sm font-medium">Ver todas</button>
+                <button 
+                  className="text-red-500 hover:text-red-400 text-sm font-medium"
+                  onClick={() => setActiveSection('sales')}
+                >
+                  Ver todas
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-700">
@@ -140,7 +157,7 @@ const Dashboard = () => {
                   <tbody className="divide-y divide-gray-700">
                     {ventasRecientes.map((venta) => (
                       <tr key={venta.id} className="hover:bg-gray-800">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">#{venta.id}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">{venta.id}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{venta.cliente}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{venta.productos}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">${formatNumber(venta.total)}</td>
@@ -321,5 +338,14 @@ const formatNumber = (number) => {
   // Usar un formato que sea consistente independientemente de la configuración regional
   return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
+
+const formatearVenta = (venta) => ({
+  id: `#${venta.id}`,
+  cliente: venta.cliente || 'Cliente no registrado',
+  productos: venta.productos,
+  total: `$${parseFloat(venta.total).toFixed(2)}`,
+  fecha: new Date(venta.fecha).toISOString().split('T')[0],
+  estado: venta.estado
+});
 
 export default Dashboard;

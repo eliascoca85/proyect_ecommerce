@@ -99,6 +99,17 @@ const getProductosWithDetails = async () => {
   return result.rows;
 };
 
+const getUltimosProductos = async (limit = 5) => {
+  const result = await pool.query(`
+    SELECT p.*, m.nombre as nombre_marca 
+    FROM producto p
+    LEFT JOIN marca m ON p.id_marca = m.id_marca
+    ORDER BY p.fecha_creacion DESC
+    LIMIT $1
+  `, [limit]);
+  return result.rows;
+};
+
 module.exports = {
   getProductos,
   getProductoById,
@@ -106,5 +117,6 @@ module.exports = {
   updateProducto,
   deleteProducto,
   getProductosByMarca,
-  getProductosWithDetails
+  getProductosWithDetails,
+  getUltimosProductos
 };

@@ -189,81 +189,157 @@ const handleWebhook = async (req, res) => {
 
 // Procesar compra exitosa
 const handleSuccessfulPayment = async (session) => {
+  console.log('🎉 Iniciando procesamiento de pago exitoso');
+  console.log('ID de sesión:', session.id);
+  
   try {
     const { carritoId, customerEmail, customerName, shippingAddress, paymentMethod } = session.metadata;
     
-    // Buscar el ID de persona basado en el email si existe
+    console.log('Datos de la sesión:', {
+      carritoId,
+      customerEmail,
+      customerName,
+      shippingAddress: JSON.parse(shippingAddress),
+      paymentMethod
+    });
+
+    if (!carritoId) {
+      throw new Error('CarritoId no encontrado en la metadata de la sesión');
+    }
+
+    // Buscar persona por email
     let personaId = null;
-    const emailResult = await pool.query('SELECT id_persona FROM persona WHERE correo = $1', [customerEmail]);
+    const emailQuery = 'SELECT id_persona FROM persona WHERE correo = $1';
+    const emailResult = await pool.query(emailQuery, [customerEmail]);
+    
     if (emailResult.rows.length > 0) {
       personaId = emailResult.rows[0].id_persona;
+      console.log('✅ Persona encontrada con ID:', personaId);
+    } else {
+      console.log('⚠️ No se encontró persona con el email:', customerEmail);
     }
 
     // Obtener detalles del carrito
     const detallesCarrito = await DetalleCarrito.getDetallesByCarritoId(carritoId);
-    
-    // Calcular el total
-    const total = detallesCarrito.reduce((sum, item) => sum + parseFloat(item.total), 0) + 15.99; // Incluir envío
-    
+    console.log('Detalles del carrito obtenidos:', detallesCarrito.length, 'items');
+
+    if (!detallesCarrito || detallesCarrito.length === 0) {
+      throw new Error(`No se encontraron productos en el carrito ${carritoId}`);
+    }
+
+    // Calcular totales
+    const subtotal = detallesCarrito.reduce((sum, item) => sum + parseFloat(item.total), 0);
+    const envio = 15.99;
+    const total = subtotal + envio;
+
+    console.log('Totales calculados:', {
+      subtotal: subtotal.toFixed(2),
+      envio: envio.toFixed(2),
+      total: total.toFixed(2)
+    });
+
     // Iniciar transacción
     const client = await pool.connect();
     
     try {
       await client.query('BEGIN');
-      
-      // 1. Crear registro de venta
-      const ventaResult = await client.query(
-        `INSERT INTO venta (id_persona, origen_carrito, total, estado, metodo_pago)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id_venta`,
-        [personaId, carritoId, total, 'Completado', paymentMethod]
-      );
-      
+      console.log('🔄 Transacción iniciada');
+
+      // 1. Insertar venta
+      const insertVentaQuery = `
+        INSERT INTO venta (
+          id_persona, 
+          origen_carrito, 
+          total, 
+          estado, 
+          metodo_pago
+        ) VALUES ($1, $2, $3, $4, $5)
+        RETURNING id_venta
+      `;
+
+      const ventaResult = await client.query(insertVentaQuery, [
+        personaId,
+        carritoId,
+        total,
+        'Completado',
+        paymentMethod
+      ]);
+
       const ventaId = ventaResult.rows[0].id_venta;
-      
-      // 2. Crear detalles de venta
+      console.log('✅ Venta creada con ID:', ventaId);
+
+      // 2. Insertar detalles de venta
       for (const item of detallesCarrito) {
-        await client.query(
-          `INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, total)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [ventaId, item.id_producto, item.cantidad, item.precio_unitario, item.total]
-        );
-        
-        // 3. Actualizar stock de productos
-        await client.query(
-          `UPDATE producto 
-           SET cantidad = cantidad - $1
-           WHERE id_producto = $2`,
-          [item.cantidad, item.id_producto]
-        );
+        const insertDetalleQuery = `
+          INSERT INTO detalle_venta (
+            id_venta,
+            id_producto,
+            cantidad,
+            precio_unitario,
+            total
+          ) VALUES ($1, $2, $3, $4, $5)
+          RETURNING id_detalle_venta
+        `;
+
+        const detalleResult = await client.query(insertDetalleQuery, [
+          ventaId,
+          item.id_producto,
+          item.cantidad,
+          item.precio_unitario,
+          item.total
+        ]);
+
+        console.log('✅ Detalle de venta creado:', {
+          id_detalle: detalleResult.rows[0].id_detalle_venta,
+          producto: item.id_producto,
+          cantidad: item.cantidad
+        });
+
+        // Actualizar stock del producto
+        const updateStockQuery = `
+          UPDATE producto 
+          SET cantidad = cantidad - $1
+          WHERE id_producto = $2
+          RETURNING cantidad as nuevo_stock
+        `;
+
+        const stockResult = await client.query(updateStockQuery, [
+          item.cantidad,
+          item.id_producto
+        ]);
+
+        console.log('✅ Stock actualizado para producto:', {
+          id_producto: item.id_producto,
+          nuevo_stock: stockResult.rows[0].nuevo_stock
+        });
       }
-      
-      // 4. Actualizar estado del carrito
-      await client.query(
-        `UPDATE carrito 
-         SET estado = 'convertido'
-         WHERE id_carrito = $1`,
-        [carritoId]
-      );
-      
-      // 5. Eliminar productos del carrito (opcional, depende de tu lógica de negocio)
-      await client.query(
-        `DELETE FROM detalle_carrito
-         WHERE id_carrito = $1`,
-        [carritoId]
-      );
-      
+
+      // 3. Actualizar estado del carrito
+      const updateCarritoQuery = `
+        UPDATE carrito 
+        SET estado = 'convertido'
+        WHERE id_carrito = $1
+      `;
+
+      await client.query(updateCarritoQuery, [carritoId]);
+      console.log('✅ Carrito marcado como convertido:', carritoId);
+
+      // Confirmar transacción
       await client.query('COMMIT');
-      console.log(`Compra completada exitosamente: Venta #${ventaId}`);
+      console.log('✅ Transacción completada exitosamente');
+      console.log(`💫 Venta #${ventaId} procesada completamente`);
+
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Error en la transacción:', error);
+      console.error('❌ Error durante la transacción:', error);
       throw error;
     } finally {
       client.release();
     }
+
   } catch (error) {
-    console.error('Error al procesar el pago exitoso:', error);
+    console.error('❌ Error general en el procesamiento del pago:', error);
+    // Aquí podrías implementar algún sistema de notificación para errores críticos
   }
 };
 

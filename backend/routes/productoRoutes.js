@@ -5,7 +5,8 @@ const {
   crearProducto,
   actualizarProducto,
   eliminarProducto,
-  obtenerProductosPorMarca
+  obtenerProductosPorMarca,
+  obtenerUltimosProductos
 } = require('../controllers/productoController');
 const upload = require('../config/multer');
 
@@ -28,5 +29,8 @@ router.put('/:id', upload.single('imagen'), actualizarProducto);
 
 // Eliminar un producto
 router.delete('/:id', eliminarProducto);
+
+// Añadir esta ruta antes de las rutas con parámetros
+router.get('/ultimos/productos', obtenerUltimosProductos);
 
 module.exports = router;

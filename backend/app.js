@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const routes = require('./routes');
 const path = require('path');
+const ventaRoutes = require('./routes/ventaRoutes');
 const app = express();
 
 // Middleware CORS más permisivo para desarrollo
@@ -40,6 +41,7 @@ app.use((req, res, next) => {
 
 // Rutas
 app.use('/api', routes);
+app.use('/api/venta', ventaRoutes);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Manejador de errores global

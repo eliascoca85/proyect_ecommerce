@@ -195,11 +195,23 @@ const obtenerProductosPorMarca = async (req, res) => {
   }
 };
 
+const obtenerUltimosProductos = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 5;
+    const productos = await Producto.getUltimosProductos(limit);
+    res.json(productos);
+  } catch (error) {
+    console.error('Error al obtener últimos productos:', error);
+    res.status(500).json({ error: 'Error al obtener los últimos productos' });
+  }
+};
+
 module.exports = {
   obtenerProductos,
   obtenerProductoPorId,
   crearProducto,
   actualizarProducto,
   eliminarProducto,
-  obtenerProductosPorMarca
+  obtenerProductosPorMarca,
+  obtenerUltimosProductos
 };
