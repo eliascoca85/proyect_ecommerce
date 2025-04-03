@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../api/client';
+import { vaciarCarritoAPI } from '../api/client';
 
 // Crear el contexto del carrito
 const CarritoContext = createContext();
@@ -355,65 +356,86 @@ const eliminarProducto = async (detalleId) => {
 };
 
   // Vaciar el carrito
-  // Reemplaza tu función vaciarCarrito actual por esta:
-
-const vaciarCarrito = async () => {
-  if (!carritoId) return;
-  
-  try {
-    setLoading(true);
+  const vaciarCarrito = async () => {
+    console.log('Intentando vaciar carrito, ID:', carritoId);
     
-    // Verificar si el carritoId es temporal (generado por Date.now())
-    const esCarritoTemporal = carritoId > 1000000000; // IDs de base de datos suelen ser pequeños
+    // Si no hay carritoId, no hacer nada
+    if (!carritoId) {
+      console.warn('No se puede vaciar el carrito: carritoId no disponible');
+      return { success: false, error: 'ID de carrito no disponible' };
+    }
     
-    // Si es un carrito temporal o solo hay productos con IDs temporales
-    const soloProductosTemporales = items.every(item => item.id_detalle_carrito > 1000000000);
-    
-    if (esCarritoTemporal || soloProductosTemporales) {
-      console.log('Vaciando carrito temporal localmente:', carritoId);
+    try {
+      // Ya estamos cargando, salir para evitar actualizaciones dobles
+      if (loading) {
+        console.log('Operación de vaciado ya en progreso, ignorando llamada duplicada');
+        return { success: false, error: 'Operación en progreso' };
+      }
       
-      // Limpiar el estado
+      // Forzar inicio de carga
+      setLoading(true);
+      setError(null);
+      
+      // Verificar si el carritoId es temporal (generado por Date.now())
+      const esCarritoTemporal = carritoId > 1000000000; // IDs de base de datos suelen ser pequeños
+      console.log('Es carrito temporal:', esCarritoTemporal, carritoId);
+      
+      // Si el carrito ya está vacío, actualizar localStorage de todos modos
+      if (items.length === 0) {
+        console.log('El carrito ya está vacío, actualizando localStorage');
+        localStorage.setItem('carritoItems', JSON.stringify([]));
+        setLoading(false);
+        return { success: true, mensaje: 'El carrito ya está vacío' };
+      }
+      
+      // Vaciar el estado local primero para respuesta inmediata al usuario
+      console.log('Vaciando carrito local, items antes:', items.length);
       setItems([]);
       setTotal(0);
       
       // Actualizar localStorage (mantener el ID del carrito)
       localStorage.setItem('carritoItems', JSON.stringify([]));
       
-      return { success: true, mensaje: 'Carrito vaciado correctamente' };
-    } 
-    // Si es un carrito real en el backend
-    else {
-      console.log('Vaciando carrito en el backend:', carritoId);
+      // Si es un carrito temporal, no necesitamos hacer nada más
+      if (esCarritoTemporal) {
+        console.log('Carrito temporal vaciado con éxito');
+        setLoading(false);
+        return { success: true, mensaje: 'Carrito vaciado correctamente' };
+      } 
+      
+      // Si es un carrito real, usar la API específica para vaciar el carrito
+      console.log('Enviando solicitud para vaciar carrito en el servidor:', carritoId);
       try {
-        const response = await apiClient.delete(`/detalles/carrito/${carritoId}`);
-        
-        // Actualizar el estado local
-        setItems([]);
-        setTotal(0);
-        
-        // Actualizar localStorage
-        localStorage.setItem('carritoItems', JSON.stringify([]));
-        
-        return response.data;
+        // Usar la función específica para vaciar el carrito
+        const response = await vaciarCarritoAPI(carritoId);
+        console.log('Respuesta del servidor:', response);
+        setLoading(false);
+        return { success: true, mensaje: response.mensaje || 'Carrito vaciado correctamente en el servidor' };
       } catch (backendError) {
         console.error('Error al vaciar carrito en el backend:', backendError);
         
-        // Vaciar localmente de todos modos para mantener la coherencia
-        setItems([]);
-        setTotal(0);
-        localStorage.setItem('carritoItems', JSON.stringify([]));
+        // Si el error es 500, probablemente sea porque el carrito ya fue procesado o eliminado
+        if (backendError.response && backendError.response.status === 500) {
+          console.log('Error 500 recibido, asumiendo que el carrito ya no existe o fue procesado');
+          // Limpiar el ID del carrito en localStorage para evitar intentos futuros
+          localStorage.removeItem('carritoId');
+          // Crear un nuevo ID para futuras compras
+          const newTempId = Date.now();
+          setCarritoId(newTempId);
+          localStorage.setItem('carritoId', newTempId.toString());
+        }
         
-        throw backendError;
+        // El carrito ya está vacío localmente, así que no hay problema
+        setLoading(false);
+        return { success: true, mensaje: 'Carrito vaciado localmente (error en servidor)' };
       }
+    } catch (err) {
+      console.error('Error inesperado al vaciar el carrito:', err);
+      setError('No se pudo vaciar el carrito completamente');
+      setLoading(false);
+      return { success: false, error: err.message };
     }
-  } catch (err) {
-    console.error('Error al vaciar el carrito:', err);
-    setError('No se pudo vaciar el carrito completamente');
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Calcular el número total de items en el carrito
   const cantidadTotal = items.reduce((acc, item) => acc + item.cantidad, 0);

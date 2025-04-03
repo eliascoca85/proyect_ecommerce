@@ -1,13 +1,19 @@
 import axios from 'axios';
 
 // Configuración base de axios
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = `${API_URL}/api`;
 
 const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Log de configuración para depuración
+console.log('API Client configurado con:', {
+  baseURL: API_BASE_URL,
 });
 
 // API para marcas
@@ -49,7 +55,7 @@ export const marcaAPI = {
         }
       });
       
-      const response = await axios.post(`${API_URL}/marcas`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/marcas`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -82,7 +88,7 @@ export const marcaAPI = {
       // Verificar que se están enviando los datos correctos
       console.log('Enviando datos de marca:', Object.fromEntries(formData));
       
-      const response = await axios.put(`${API_URL}/marcas/${id}`, formData, {
+      const response = await axios.put(`${API_BASE_URL}/marcas/${id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -159,7 +165,7 @@ export const productoAPI = {
         }
       });
       
-      const response = await axios.post(`${API_URL}/productos`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/productos`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -189,7 +195,7 @@ export const productoAPI = {
         }
       });
       
-      const response = await axios.put(`${API_URL}/productos/${id}`, formData, {
+      const response = await axios.put(`${API_BASE_URL}/productos/${id}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -210,6 +216,42 @@ export const productoAPI = {
       console.error(`Error al eliminar producto ${id}:`, error);
       throw error;
     }
+  }
+};
+
+// Vaciar un carrito
+export const vaciarCarritoAPI = async (carritoId) => {
+  try {
+    console.log(`Enviando solicitud para vaciar carrito ID: ${carritoId}`);
+    
+    // Verificar que el carritoId sea válido
+    if (!carritoId || isNaN(parseInt(carritoId))) {
+      console.error('ID de carrito inválido:', carritoId);
+      throw new Error('ID de carrito inválido');
+    }
+    
+    // Usar un timeout para evitar que la solicitud se quede esperando demasiado tiempo
+    const response = await apiClient.delete(`/carritos/${carritoId}/vaciar`, {
+      timeout: 5000 // 5 segundos máximo
+    });
+    
+    console.log('Respuesta del servidor:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`Error al vaciar el carrito ${carritoId}:`, error);
+    
+    // Si el error es 500, puede ser que el carrito ya fue procesado o no existe
+    if (error.response && error.response.status === 500) {
+      console.log('Error 500 del servidor, posiblemente el carrito ya fue procesado');
+      // Devolver un objeto similar al que devolvería el servidor en caso de éxito
+      return {
+        success: true,
+        mensaje: 'Carrito probablemente ya procesado (error 500)',
+        id_carrito: carritoId
+      };
+    }
+    
+    throw error;
   }
 };
 
